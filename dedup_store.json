@@ -1,0 +1,199 @@
+{
+  "seen": [
+    "doi:10.1002/btm2.70168",
+    "doi:10.1007/s00125-026-06840-0",
+    "doi:10.1007/s00125-026-06849-5",
+    "doi:10.1007/s13300-026-01917-w",
+    "doi:10.1016/j.diabres.2026.113548",
+    "doi:10.1016/j.diabres.2026.113570",
+    "doi:10.1016/j.jcjd.2026.09.003",
+    "doi:10.1111/aor.70245",
+    "doi:10.1111/dom.71339",
+    "doi:10.1111/dom.71342",
+    "doi:10.1111/dom.71347",
+    "doi:10.1111/dom.71350",
+    "doi:10.1111/dom.71369",
+    "doi:10.1136/archdischild-2026-330408",
+    "doi:10.1136/bmjopen-2026-124606",
+    "doi:10.1159/hrp/adaag028",
+    "doi:10.1177/15209156261486122",
+    "doi:10.1177/15209156261486558",
+    "doi:10.1177/19322968261463556",
+    "doi:10.1210/clinem/dgag355",
+    "doi:10.5409/wjcp.117421",
+    "doi:10.5409/wjcp.118236",
+    "nct:NCT02734277",
+    "nct:NCT02912728",
+    "nct:NCT03914547",
+    "nct:NCT04572009",
+    "nct:NCT05264376",
+    "nct:NCT05791201",
+    "nct:NCT05944731",
+    "nct:NCT06014879",
+    "nct:NCT06273631",
+    "nct:NCT06783309",
+    "nct:NCT06820281",
+    "nct:NCT06845891",
+    "nct:NCT07039617",
+    "nct:NCT07088068",
+    "nct:NCT07145671",
+    "nct:NCT07593625",
+    "nct:NCT07616206",
+    "nct:NCT07699380",
+    "nct:NCT07812974",
+    "nct:NCT07814508",
+    "nct:NCT07828106",
+    "nct:NCT07828626",
+    "nct:NCT07829302",
+    "nct:NCT07830082",
+    "nct:NCT07831798",
+    "url:https://www.breakthrought1d.org/for-the-media/press-releases/breakthrough-t1d-awards-grant-to-hesi-global-to-launch-the-t1d-cures-accelerator-a-new-effort-to-speed-cures-for-type-1-diabetes/",
+    "url:https://www.breakthrought1d.org/for-the-media/press-releases/breakthrough-t1d-celebrates-approval-of-first-new-treatment-for-people-with-type-1-diabetes-and-chronic-kidney-disease-in-30-years/",
+    "url:https://www.breakthrought1d.org/for-the-media/press-releases/breakthrough-t1d-convened-paper-outlines-first-international-consensus-guidance-on-general-population-screening-for-early-stage-type-1-diabetes/"
+  ],
+  "last_run": "2026-09-22T07:23:41.033619+00:00",
+  "known_fiches": [
+    {
+      "title": "Donislecel (Lantidra) --- greffe d'îlots de donneurs",
+      "axis": "Biologique",
+      "identifiers": [
+        "donislecel (lantidra)",
+        "donislecel",
+        "lantidra"
+      ]
+    },
+    {
+      "title": "Zimislecel (VX-880) --- îlots dérivés de cellules souches",
+      "axis": "Biologique",
+      "identifiers": [
+        "zimislecel (vx-880)",
+        "zimislecel",
+        "vx-880"
+      ]
+    },
+    {
+      "title": "VX-264 --- îlots dérivés de cellules souches encapsulés",
+      "axis": "Biologique",
+      "identifiers": [
+        "vx-264"
+      ]
+    },
+    {
+      "title": "VCTX211 --- cellules pancréatiques modifiées par CRISPR",
+      "axis": "Biologique",
+      "identifiers": [
+        "vctx211"
+      ]
+    },
+    {
+      "title": "VCTX210A --- cellules pancréatiques modifiées par CRISPR",
+      "axis": "Biologique",
+      "identifiers": [
+        "vctx210a"
+      ]
+    },
+    {
+      "title": "Thérapie génique AAV-IL-10 --- immunomodulation préclinique",
+      "axis": "Biologique",
+      "identifiers": [
+        "thérapie génique aav-il-10"
+      ]
+    },
+    {
+      "title": "Réencapsulation et micro-encapsulation d'îlots --- protection immunitaire",
+      "axis": "Biologique",
+      "identifiers": [
+        "réencapsulation et micro-encapsulation d'îlots"
+      ]
+    },
+    {
+      "title": "CGM temps réel --- capteurs de glucose en continu",
+      "axis": "Mécanique",
+      "identifiers": [
+        "cgm temps réel"
+      ]
+    },
+    {
+      "title": "Pompe à insuline sous-cutanée --- administration continue",
+      "axis": "Mécanique",
+      "identifiers": [
+        "pompe à insuline sous-cutanée"
+      ]
+    },
+    {
+      "title": "Control-IQ --- système d'administration automatisée d'insuline",
+      "axis": "Mécanique",
+      "identifiers": [
+        "control-iq"
+      ]
+    },
+    {
+      "title": "Omnipod 5 --- système AID tubeless",
+      "axis": "Mécanique",
+      "identifiers": [
+        "omnipod 5"
+      ]
+    },
+    {
+      "title": "Eversense 365 --- CGM implantable",
+      "axis": "Mécanique",
+      "identifiers": [
+        "eversense 365"
+      ]
+    },
+    {
+      "title": "MIIPS 2020 --- pompe à insuline implantable",
+      "axis": "Mécanique",
+      "identifiers": [
+        "miips 2020"
+      ]
+    },
+    {
+      "title": "Teplizumab (Tzield / Teizeild) --- anti-CD3",
+      "axis": "Immunothérapie",
+      "identifiers": [
+        "teplizumab (tzield / teizeild)",
+        "teplizumab",
+        "teizeild",
+        "tzield"
+      ]
+    },
+    {
+      "title": "Abatacept --- inhibition de la co-stimulation des lymphocytes T",
+      "axis": "Immunothérapie",
+      "identifiers": [
+        "abatacept"
+      ]
+    },
+    {
+      "title": "Rituximab --- déplétion des lymphocytes B",
+      "axis": "Immunothérapie",
+      "identifiers": [
+        "rituximab"
+      ]
+    },
+    {
+      "title": "ATG --- globuline anti-thymocyte à faible dose",
+      "axis": "Immunothérapie",
+      "identifiers": [
+        "atg"
+      ]
+    },
+    {
+      "title": "IL-2 à faible dose --- expansion des lymphocytes T régulateurs",
+      "axis": "Immunothérapie",
+      "identifiers": [
+        "il-2 à faible dose"
+      ]
+    },
+    {
+      "title": "Cellules dendritiques tolérisantes (tolDC) --- tolérance immune",
+      "axis": "Immunothérapie",
+      "identifiers": [
+        "cellules dendritiques tolérisantes (toldc)",
+        "cellules dendritiques tolérisantes",
+        "toldc"
+      ]
+    }
+  ]
+}

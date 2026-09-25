@@ -1,0 +1,72 @@
+name: Veille DT1
+
+# Planificateur cloud : tourne chez GitHub, indépendamment de tout PC
+# allumé — remplace la tâche planifiée Windows locale (register_task.ps1)
+# quand ce workflow est activé. Le document diabete-type1-veille.md et
+# dedup_store.json vivent alors dans le dépôt : ce workflow les met à jour
+# et les recommit lui-même à chaque exécution réelle.
+on:
+  schedule:
+    # 06:00 UTC ≈ 07:00 heure de Paris en hiver (CET) / 08:00 en été (CEST) —
+    # GitHub Actions ne gère pas les fuseaux horaires avec heure d'été,
+    # ajuster ici si l'heure d'exécution réelle dérive trop.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Simulation seulement (aucune écriture, aucun email)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: veille-dt1
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Dépendances
+        run: pip install -r requirements.txt
+
+      - name: Identifiants email (depuis le secret GitHub)
+        run: |
+          cat > email_credentials.yaml <<EOF
+          app_password: "${{ secrets.GMAIL_APP_PASSWORD }}"
+          EOF
+
+      - name: Veille (simulation, rien n'est envoyé ni écrit)
+        if: github.event_name == 'workflow_dispatch' && inputs.dry_run
+        run: python main.py --dry-run
+
+      - name: Veille (exécution réelle)
+        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && ! inputs.dry_run)
+        run: python main.py
+
+      - name: Commit des mises à jour
+        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && ! inputs.dry_run)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add diabete-type1-veille.md dedup_store.json logs/last_run_summary.json
+          git diff --staged --quiet || git commit -m "Veille DT1 : mise à jour automatique $(date -u +%Y-%m-%d)"
+          git push
+
+      - name: Journal (archivé même en cas d'échec)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: veille-logs
+          path: logs/
+          retention-days: 30

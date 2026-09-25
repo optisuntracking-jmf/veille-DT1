@@ -1,0 +1,288 @@
+# Configuration de l'automate de veille scientifique DT1
+# ---------------------------------------------------------
+# Toutes les dates manipulées par le script sont en UTC.
+# Le format d'affichage dans le Markdown est contrôlé par `date_format`.
+
+markdown_file: "diabete-type1-veille.md"
+dedup_store: "dedup_store.json"
+log_file: "logs/veille.log"
+
+# --- Notification par email (optionnelle) ---------------------------------
+# Envoyée UNIQUEMENT en exécution réelle (jamais en --dry-run, sauf avec
+# --test-email qui force un envoi de test). Le mot de passe n'est jamais
+# stocké ici : voir credentials_file.
+email:
+  enabled: true
+  smtp_host: "smtp.gmail.com"
+  smtp_port: 587
+  from_addr: "fuz2308@gmail.com"
+  # Un seul destinataire pendant les tests. Pour repasser à plusieurs
+  # destinataires, décommenter le bloc to_addrs ci-dessous et supprimer
+  # (ou commenter) la ligne to_addr.
+  to_addr: "jmfusella@free.fr"
+  # to_addrs:
+  #   - "jmfusella@free.fr"
+  #   - "marionfusella@gmail.com"
+  # Fichier séparé (exclu du suivi de version) contenant le mot de passe
+  # d'application Gmail. Voir email_credentials.example.yaml pour le format
+  # et README.md pour comment le générer.
+  credentials_file: "email_credentials.yaml"
+  # true : un email seulement s'il y a du nouveau (fiche mise à jour ou
+  # nouvelle entrée) ou une erreur. false : un email à chaque exécution.
+  only_if_changes: true
+
+# Format d'affichage des dates insérées dans la section 5 (strftime)
+# JJ/MM/AAAA choisi par l'utilisateur.
+date_format: "%d/%m/%Y"
+
+# Fenêtre glissante de recherche, en jours avant "aujourd'hui" (ou avant
+# --window-end si fourni en ligne de commande pour un test sur une
+# période fixe).
+window_days: 15
+
+# Nombre max d'entrées insérées par exécution (garde-fou anti-flood).
+max_entries_per_run: 25
+
+# --- PubMed (NCBI E-utilities) -------------------------------------------
+pubmed:
+  # Optionnel : clé API NCBI pour un quota plus élevé (3 -> 10 req/s).
+  # Laisser vide si vous n'en avez pas.
+  api_key: ""
+  # Obligatoire par les CGU NCBI : email de contact identifiant l'appelant.
+  email: "optisun.tracking@gmail.com"
+  max_results_per_query: 25
+  queries:
+    - axis: "Biologique"
+      query: >-
+        ("islet transplantation"[tiab] OR "stem cell-derived islet"[tiab]
+        OR "encapsulated islet"[tiab] OR "beta cell replacement"[tiab]
+        OR "stem cell therapy"[tiab] OR "gene therapy"[tiab]
+        OR "CRISPR"[tiab])
+        AND ("type 1 diabetes"[tiab] OR "type 1 diabetes mellitus"[tiab])
+    - axis: "Mécanique"
+      query: >-
+        ("continuous glucose monitor"[tiab] OR "insulin pump"[tiab]
+        OR "automated insulin delivery"[tiab] OR "closed loop"[tiab]
+        OR "artificial pancreas"[tiab] OR "hybrid closed-loop"[tiab])
+        AND ("type 1 diabetes"[tiab] OR "type 1 diabetes mellitus"[tiab])
+    - axis: "Immunothérapie"
+      query: >-
+        ("teplizumab"[tiab] OR "anti-CD3"[tiab] OR "regulatory T cell"[tiab]
+        OR "tolerogenic dendritic cell"[tiab] OR "immunotherapy"[tiab]
+        OR "abatacept"[tiab] OR "rituximab"[tiab])
+        AND ("type 1 diabetes"[tiab] OR "type 1 diabetes mellitus"[tiab])
+
+# --- ClinicalTrials.gov API v2 --------------------------------------------
+clinicaltrials:
+  base_url: "https://clinicaltrials.gov/api/v2/studies"
+  condition: "Type 1 Diabetes"
+  max_results: 50
+  # Essais nouvellement enregistrés OU mis à jour dans la fenêtre.
+  # (Statuts exclus explicitement : aucun, pour ne pas manquer un arrêt d'essai.)
+
+# --- Flux RSS / Atom --------------------------------------------------------
+# category : "agence_reglementaire" | "industriel" | "association" | "academique"
+# Ces catégories pilotent la règle de confiance (cf. classify_confidence
+# dans main.py) : sans DOI/NCT, "agence_reglementaire" et "industriel"
+# donnent une confiance Moyenne ; "association" est traitée comme Faible
+# ("non confirmé") sauf si l'article cite lui-même un DOI/NCT.
+# Flux vérifiés (200 + XML valide constaté le 18/09/2026), voir
+# README.md section "Flux RSS - statut de vérification" pour le détail.
+rss_feeds:
+  - name: "FDA - Communiqués de presse"
+    url: "https://www.fda.gov/about-fda/contact-fda/stay-informed/rss-feeds/press-releases/rss.xml"
+    country: "États-Unis"
+    category: "agence_reglementaire"
+    axis_hint: null
+    enabled: true
+
+  - name: "EMA - Actualités"
+    url: "https://www.ema.europa.eu/en/news.xml"
+    country: "Union européenne"
+    category: "agence_reglementaire"
+    axis_hint: null
+    enabled: true
+
+  - name: "ANSM - Actualités"
+    url: "https://ansm.sante.fr/rss/actualites"
+    country: "France"
+    category: "agence_reglementaire"
+    axis_hint: null
+    enabled: true
+
+  - name: "Breakthrough T1D (ex-JDRF) - Communiqués de presse"
+    url: "https://www.breakthrought1d.org/for-the-media/press-releases/feed/"
+    country: "États-Unis"
+    category: "association"
+    axis_hint: null
+    enabled: true
+
+  - name: "Vertex Pharmaceuticals - Communiqués"
+    url: "https://investors.vrtx.com/rss/news-releases.xml"
+    country: "États-Unis"
+    category: "industriel"
+    axis_hint: "Biologique"
+    enabled: true
+
+  - name: "Eli Lilly - Newsroom"
+    url: "https://investor.lilly.com/rss/news-releases.xml"
+    country: "États-Unis"
+    category: "industriel"
+    axis_hint: null
+    enabled: true
+
+  # Dexcom et Insulet utilisent la même plateforme IR (Q4) que Vertex/Lilly,
+  # mais l'URL au même format renvoie un 404 confirmé (testé le 18/09/2026,
+  # deux fois : d'abord 429 anti-bot, puis 404 propre une fois le blocage
+  # anti-bot passé). Ce n'est donc pas juste un blocage temporaire : le
+  # schéma d'URL est probablement différent pour ces deux sociétés.
+  # Désactivés pour éviter un échec systématique ; à corriger manuellement
+  # en trouvant la vraie URL RSS sur investors.dexcom.com / investors.insulet.com.
+  - name: "Dexcom - Newsroom (URL à corriger, 404 constaté)"
+    url: "https://investors.dexcom.com/rss/news-releases.xml"
+    country: "États-Unis"
+    category: "industriel"
+    axis_hint: "Mécanique"
+    enabled: false
+
+  - name: "Insulet - Newsroom (URL à corriger, 404 constaté)"
+    url: "https://investors.insulet.com/rss/news-releases.xml"
+    country: "États-Unis"
+    category: "industriel"
+    axis_hint: "Mécanique"
+    enabled: false
+
+  # Pas de flux RSS public trouvé (vérifié le 18/09/2026) : Medtronic Diabetes
+  # a été absorbé par le site "news.minimed.com" sans balise <link rel=alternate>
+  # ni endpoint /rss, et la Fédération Française des Diabétiques n'expose ni
+  # /feed ni <link rel="alternate" type="application/rss+xml">. Les activer
+  # nécessiterait un scraping HTML généraliste, explicitement exclu comme
+  # source principale par le cahier des charges. Laissés désactivés ; on peut
+  # les rouvrir manuellement si ces sites publient un flux à l'avenir.
+  - name: "Medtronic Diabetes - Newsroom (pas de RSS public)"
+    url: "https://news.minimed.com/"
+    country: "États-Unis"
+    category: "industriel"
+    axis_hint: "Mécanique"
+    enabled: false
+
+  - name: "Fédération Française des Diabétiques - Actualités (pas de RSS public)"
+    url: "https://www.federationdesdiabetiques.org/federation/actualites"
+    country: "France"
+    category: "association"
+    axis_hint: null
+    enabled: false
+
+# --- Classification par mots-clés (heuristique, extractive) ---------------
+axis_keywords:
+  Biologique:
+    - "islet"
+    - "îlot"
+    - "stem cell"
+    - "cellule souche"
+    - "beta cell"
+    - "cellule bêta"
+    - "encapsulat"
+    - "transplant"
+    - "greffe"
+    - "gene therapy"
+    - "thérapie génique"
+    - "crispr"
+  Mécanique:
+    - "glucose monitor"
+    - "cgm"
+    - "insulin pump"
+    - "pompe à insuline"
+    - "closed loop"
+    - "boucle fermée"
+    - "artificial pancreas"
+    - "pancréas artificiel"
+    - "automated insulin delivery"
+    - "aid system"
+  Immunothérapie:
+    - "immunotherapy"
+    - "immunothérapie"
+    - "teplizumab"
+    - "anti-cd3"
+    - "regulatory t cell"
+    - "lymphocyte t régulateur"
+    - "tolerogenic dendritic"
+    - "cellule dendritique"
+    - "rituximab"
+    - "abatacept"
+
+maturity_keywords:
+  Préclinique:
+    - "preclinical"
+    - "préclinique"
+    - "mouse model"
+    - "modèle murin"
+    - "in vitro"
+    - "animal model"
+  "Phase 1":
+    - "phase 1"
+    - "phase i "
+    - "phase i,"
+  "Phase 2":
+    - "phase 2"
+    - "phase ii "
+    - "phase ii,"
+  "Phase 3":
+    - "phase 3"
+    - "phase iii "
+    - "phase iii,"
+  Commercialisé:
+    - "fda approv"
+    - "ema approv"
+    - "autorisation de mise sur le marché"
+    - "now available"
+    - "commercially available"
+    - "cleared by the fda"
+
+# Domaines considérés comme communication officielle d'organisme/entreprise
+# (confiance Moyenne sans DOI/NCT). Toute source hors de cette liste et hors
+# PubMed/ClinicalTrials.gov est traitée en confiance Faible ("non confirmé").
+official_org_domains:
+  - "fda.gov"
+  - "ema.europa.eu"
+  - "ansm.sante.fr"
+  - "vrtx.com"
+  - "news.vrtx.com"
+  - "lilly.com"
+  - "medtronic.com"
+  - "dexcom.com"
+  - "insulet.com"
+  - "breakthrought1d.org"
+  - "federationdesdiabetiques.org"
+  - "aphp.fr"
+
+# --- Logique à deux niveaux : mise à jour de fiche vs. nouvelle entrée ----
+# Quand une nouveauté correspond à une fiche existante (sections 2-4), son
+# résumé traduit est réparti phrase par phrase entre "Bénéfices" et
+# "Inconvénients & risques" par simple présence d'un de ces mots-clés
+# (tri déterministe par mot-clé, jamais une classification sémantique).
+# Une phrase sans mot-clé de risque va par défaut dans "Bénéfices".
+risk_keywords:
+  - "risque"
+  - "risques"
+  - "effet indésirable"
+  - "effets indésirables"
+  - "événement indésirable"
+  - "événements indésirables"
+  - "grave"
+  - "sécurité"
+  - "hypoglycémie"
+  - "hyperglycémie"
+  - "immunosuppression"
+  - "rejet"
+  - "infection"
+  - "neutropénie"
+  - "lymphopénie"
+  - "décès"
+  - "arrêt"
+  - "abandon"
+  - "toxicité"
+  - "toxique"
+  - "effet secondaire"
+  - "syndrome de libération de cytokines"
+  - "complication"
