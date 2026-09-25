@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-09-25T09:31:03.050825+00:00",
+  "generated_at": "2026-09-25T09:46:40.853723+00:00",
   "dry_run": false,
   "window_start": "2026-09-10",
   "window_end": "2026-09-25",
   "sources": {
     "pubmed": {
-      "found": 25,
+      "found": 27,
       "filtered_out": 0,
       "error": null
     },
@@ -20,14 +20,63 @@
       "error": null
     }
   },
-  "found_total": 63,
-  "after_dedup": 0,
-  "fiches_updated": [],
-  "new_entries": [],
+  "found_total": 65,
+  "after_dedup": 2,
+  "fiches_updated": [
+    {
+      "title": "Control-IQ --- système d'administration automatisée d'insuline",
+      "country": "États-Unis",
+      "new_maturity": null,
+      "new_country": null,
+      "benefit_additions": [
+        "[22/09/2026] Les systèmes hybrides en boucle fermée (HCLS), tels que le Tandem t : slim X2™, sont largement utilisés chez les patients atteints de diabète de type 1 (DT1) et présentent des avantages bien établis dans le contrôle glycémique. Cependant, les preuves à l'appui de leur utilisation pendant la grossesse et la période péripartum restent limitées. Nous avons mené une série de cas observationnels descriptifs d'août 2024 à février 2026 de cinq femmes enceintes atteintes de DT1 à l'aide du Tandem t : slim X2™ avec Control- IQ® hors indication pendant la grossesse, le travail et le début de la période post-partum. Le contrôle glycémique s'est amélioré pendant la grossesse, avec une TIRp moyenne passant de 50,9±17,9% avant l'initiation du HCLS à 61,0±14,4% au troisième trimestre, parallèlement à une réduction de l'HbA1c de 7,2±1,0% à 6,0±0,5%. La prééclampsie s'est produite dans trois des cinq cas. Dans les cas 1 à 4, HCLS est resté en mode automatisé pendant le travail et l'accouchement, l'activité de sommeil étant activée pendant 33 %à 40 % du temps et les paramètres du troisième trimestre étant maintenus. Cas 5 : HCLS suspendu avant le travail et recommencé deux jours après l'accouchement. Au début de la période post-partum (jours 1 à 3), la TIR moyenne était de 80,8±14,6 % et le temps sous la plage (TBR) était de 2,3±1,1 %. Cette série de cas suggère que Tandem t : slim X2™ Control-IQ® est sûr et peut améliorer le contrôle glycémique pendant la grossesse et la période péripartum. D'autres études comparant cette approche aux soins standard sont nécessaires pour évaluer globalement ses effets sur le contrôle glycémique et les résultats maternels et néonatals."
+      ],
+      "risk_additions": [
+        "[22/09/2026] La durée moyenne spécifique à la grossesse (TIRp) pendant le travail et l'accouchement était de 64,3±10,7 %, avec une hypoglycémie minimale (1,5±2,6 %). Des hypoglycémies néonatales ont été rapportées dans trois des cinq cas."
+      ],
+      "source_additions": [
+        "PubMed ; https://doi.org/10.2174/0115733998507589260907041440"
+      ],
+      "items": [
+        {
+          "date": "22/09/2026",
+          "country": "Portugal",
+          "axis": "Mécanique",
+          "doc_type": "Article",
+          "maturity": "non précisé dans la source",
+          "confidence": "Élevé",
+          "confidence_note": "",
+          "title_fr": "Utilisation hors indication du Tandem t : slim X2™ avec Control IQ® pendant la grossesse : Aperçus de cinq études de cas.",
+          "summary_fr": "Les systèmes hybrides en boucle fermée (HCLS), tels que le Tandem t : slim X2™, sont largement utilisés chez les patients atteints de diabète de type 1 (DT1) et présentent des avantages bien établis dans le contrôle glycémique. Cependant, les preuves à l'appui de leur utilisation pendant la grossesse et la période péripartum restent limitées. Nous avons mené une série de cas observationnels descriptifs d'août 2024 à février 2026 de cinq femmes enceintes atteintes de DT1 à l'aide du Tandem t : slim X2™ avec Control- IQ® hors indication pendant la grossesse, le travail et le début de la période post-partum. Le contrôle glycémique s'est amélioré pendant la grossesse, avec une TIRp moyenne passant de 50,9±17,9% avant l'initiation du HCLS à 61,0±14,4% au troisième trimestre, parallèlement à une réduction de l'HbA1c de 7,2±1,0% à 6,0±0,5%. La prééclampsie s'est produite dans trois des cinq cas. Dans les cas 1 à 4, HCLS est resté en mode automatisé pendant le travail et l'accouchement, l'activité de sommeil étant activée pendant 33 %à 40 % du temps et les paramètres du troisième trimestre étant maintenus. Cas 5 : HCLS suspendu avant le travail et recommencé deux jours après l'accouchement. La durée moyenne spécifique à la grossesse (TIRp) pendant le travail et l'accouchement était de 64,3±10,7 %, avec une hypoglycémie minimale (1,5±2,6 %). Au début de la période post-partum (jours 1 à 3), la TIR moyenne était de 80,8±14,6 % et le temps sous la plage (TBR) était de 2,3±1,1 %. Des hypoglycémies néonatales ont été rapportées dans trois des cinq cas. Cette série de cas suggère que Tandem t : slim X2™ Control-IQ® est sûr et peut améliorer le contrôle glycémique pendant la grossesse et la période péripartum. D'autres études comparant cette approche aux soins standard sont nécessaires pour évaluer globalement ses effets sur le contrôle glycémique et les résultats maternels et néonatals.",
+          "benefit_fr": "Les systèmes hybrides en boucle fermée (HCLS), tels que le Tandem t : slim X2™, sont largement utilisés chez les patients atteints de diabète de type 1 (DT1) et présentent des avantages bien établis dans le contrôle glycémique. Cependant, les preuves à l'appui de leur utilisation pendant la grossesse et la période péripartum restent limitées. Nous avons mené une série de cas observationnels descriptifs d'août 2024 à février 2026 de cinq femmes enceintes atteintes de DT1 à l'aide du Tandem t : slim X2™ avec Control- IQ® hors indication pendant la grossesse, le travail et le début de la période post-partum. Le contrôle glycémique s'est amélioré pendant la grossesse, avec une TIRp moyenne passant de 50,9±17,9% avant l'initiation du HCLS à 61,0±14,4% au troisième trimestre, parallèlement à une réduction de l'HbA1c de 7,2±1,0% à 6,0±0,5%. La prééclampsie s'est produite dans trois des cinq cas. Dans les cas 1 à 4, HCLS est resté en mode automatisé pendant le travail et l'accouchement, l'activité de sommeil étant activée pendant 33 %à 40 % du temps et les paramètres du troisième trimestre étant maintenus. Cas 5 : HCLS suspendu avant le travail et recommencé deux jours après l'accouchement. Au début de la période post-partum (jours 1 à 3), la TIR moyenne était de 80,8±14,6 % et le temps sous la plage (TBR) était de 2,3±1,1 %. Cette série de cas suggère que Tandem t : slim X2™ Control-IQ® est sûr et peut améliorer le contrôle glycémique pendant la grossesse et la période péripartum. D'autres études comparant cette approche aux soins standard sont nécessaires pour évaluer globalement ses effets sur le contrôle glycémique et les résultats maternels et néonatals.",
+          "risk_fr": "La durée moyenne spécifique à la grossesse (TIRp) pendant le travail et l'accouchement était de 64,3±10,7 %, avec une hypoglycémie minimale (1,5±2,6 %). Des hypoglycémies néonatales ont été rapportées dans trois des cinq cas.",
+          "source_name": "PubMed",
+          "source_url": "https://doi.org/10.2174/0115733998507589260907041440"
+        }
+      ]
+    }
+  ],
+  "new_entries": [
+    {
+      "date": "24/09/2026",
+      "country": "Netherlands",
+      "title": "Performance de trois ans dans le monde réel de la thérapie bihormonale en boucle entièrement fermée dans le diabète de type 1.",
+      "axis": "Mécanique",
+      "doc_type": "Article",
+      "maturity": "non précisé dans la source",
+      "summary": "La gestion du diabète de type 1 continue de progresser grâce à de nouvelles options de traitement, telles que les systèmes bihormonaux en boucle entièrement fermée (FCL). Les données réelles sur ces systèmes sont actuellement limitées à un an maximum. Un suivi prolongé s'étendant sur plusieurs années fournirait des informations précieuses sur les performances à long terme d'un FCL bihormonal. Dans une étude de cohorte rétrospective, observationnelle et réelle, des adultes atteints de diabète de type 1 qui ont été traités avec le système FCL bihormonal pendant 3 ans ont été inclus. Les critères d'évaluation ont été déterminés tous les 6 mois (semestre) et comprenaient les résultats dérivés de la surveillance continue de la glycémie. Des modèles linéaires à effets mixtes ont été utilisés pour évaluer les changements dans les mesures des résultats au fil du temps. Au total, 102 utilisateurs ont été inclus dans l'étude. La disponibilité limitée du glucagon initial (GlucaGen [GG]) a conduit à un passage nécessaire à une alternative (Glugon) pour une partie des utilisateurs. Utilisateurs de GG uniquement (les données du monde réel ont démontré une stabilité à long terme des performances du système FCL bihormonal chez les personnes traitées par GG. Une légère baisse de performance a été observée dans la population totale, et les résultats se sont significativement détériorés pour les utilisateurs après le changement de glucagon, indiquant un effet négatif sur la performance FCL du glucagon alternatif. Dans l'ensemble, les résultats à long terme indiquent les avantages du FCL bihormonal pour maintenir un contrôle glycémique adéquat chez les personnes atteintes de diabète de type 1 pendant plusieurs années.",
+      "confidence": "Élevé",
+      "confidence_note": "",
+      "source_name": "PubMed",
+      "source_url": "https://doi.org/10.1177/15209156261492793",
+      "benefit_fr": "La gestion du diabète de type 1 continue de progresser grâce à de nouvelles options de traitement, telles que les systèmes bihormonaux en boucle entièrement fermée (FCL). Les données réelles sur ces systèmes sont actuellement limitées à un an maximum. Un suivi prolongé s'étendant sur plusieurs années fournirait des informations précieuses sur les performances à long terme d'un FCL bihormonal. Dans une étude de cohorte rétrospective, observationnelle et réelle, des adultes atteints de diabète de type 1 qui ont été traités avec le système FCL bihormonal pendant 3 ans ont été inclus. Les critères d'évaluation ont été déterminés tous les 6 mois (semestre) et comprenaient les résultats dérivés de la surveillance continue de la glycémie. Des modèles linéaires à effets mixtes ont été utilisés pour évaluer les changements dans les mesures des résultats au fil du temps. Au total, 102 utilisateurs ont été inclus dans l'étude. La disponibilité limitée du glucagon initial (GlucaGen [GG]) a conduit à un passage nécessaire à une alternative (Glugon) pour une partie des utilisateurs. Utilisateurs de GG uniquement (les données du monde réel ont démontré une stabilité à long terme des performances du système FCL bihormonal chez les personnes traitées par GG. Une légère baisse de performance a été observée dans la population totale, et les résultats se sont significativement détériorés pour les utilisateurs après le changement de glucagon, indiquant un effet négatif sur la performance FCL du glucagon alternatif. Dans l'ensemble, les résultats à long terme indiquent les avantages du FCL bihormonal pour maintenir un contrôle glycémique adéquat chez les personnes atteintes de diabète de type 1 pendant plusieurs années.",
+      "risk_fr": ""
+    }
+  ],
   "warnings_count": 2,
   "warnings": [
-    "2026-09-25 09:31:29,439 [WARNING] RSS Vertex Pharmaceuticals - Communiqués : impossible de lire le flux (HTTPSConnectionPool(host='investors.vrtx.com', port=443): Read timed out. (read timeout=20))",
-    "2026-09-25 09:31:49,694 [WARNING] RSS Eli Lilly - Newsroom : impossible de lire le flux (HTTPSConnectionPool(host='investor.lilly.com', port=443): Read timed out. (read timeout=20))"
+    "2026-09-25 09:47:05,871 [WARNING] RSS Vertex Pharmaceuticals - Communiqués : impossible de lire le flux (HTTPSConnectionPool(host='investors.vrtx.com', port=443): Read timed out. (read timeout=20))",
+    "2026-09-25 09:47:26,032 [WARNING] RSS Eli Lilly - Newsroom : impossible de lire le flux (HTTPSConnectionPool(host='investor.lilly.com', port=443): Read timed out. (read timeout=20))"
   ],
   "error": null
 }
