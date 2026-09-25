@@ -238,6 +238,17 @@ _TRANSLATE_CALL_TIMEOUT = 8.0  # secondes
 _CIRCUIT_BREAKER_THRESHOLD = 5
 _consecutive_translate_failures = [0]
 
+# Coupe-circuit par moteur : sur certains réseaux (ex. IP partagée de
+# datacenter GitHub Actions), un moteur précis peut échouer de façon
+# systématique (quota epuisé, blocage anti-abus) alors que l'autre
+# fonctionne parfaitement — retenter le moteur cassé à chaque item gaspille
+# plusieurs secondes par item pour rien. Après quelques échecs consécutifs,
+# ce moteur est ignoré pour le reste de l'exécution (pas de retry immédiat
+# non plus : sur une erreur "too many requests", réessayer une seconde plus
+# tard échoue quasi toujours pareil).
+_ENGINE_FAILURE_THRESHOLD = 3
+_engine_consecutive_failures: dict = {}
+
 # GoogleTranslator/MyMemoryTranslator (deep-translator) n'exposent aucun
 # paramètre timeout sur leurs requêtes HTTP internes : un appel qui ne
 # répond jamais (fréquent en cas de blocage anti-abus depuis une IP de
@@ -279,21 +290,27 @@ def _translate_chunk(text: str) -> str:
         return f"[traduction automatique indisponible - service injoignable, réessais suspendus pour cette exécution] {text}"
 
     last_error = None
+    attempted_any = False
     for name, engine in engines:
-        for attempt in range(2):
-            _throttle_translate()
-            try:
-                result = _call_with_timeout(engine, text, _TRANSLATE_CALL_TIMEOUT)
-                _last_translate_call[0] = time.time()
-                if result:
-                    _consecutive_translate_failures[0] = 0
-                    return result
-            except Exception as exc:  # pragma: no cover - dépend du réseau
-                _last_translate_call[0] = time.time()
-                last_error = exc
-                if attempt == 0:
-                    logger.info("Traduction (%s) : nouvelle tentative après erreur (%s)", name, exc)
-                    time.sleep(1.0)
+        if _engine_consecutive_failures.get(name, 0) >= _ENGINE_FAILURE_THRESHOLD:
+            continue  # ce moteur échoue systématiquement depuis le début du run
+        attempted_any = True
+        _throttle_translate()
+        try:
+            result = _call_with_timeout(engine, text, _TRANSLATE_CALL_TIMEOUT)
+            _last_translate_call[0] = time.time()
+            if result:
+                _consecutive_translate_failures[0] = 0
+                _engine_consecutive_failures[name] = 0
+                return result
+        except Exception as exc:  # pragma: no cover - dépend du réseau
+            _last_translate_call[0] = time.time()
+            last_error = exc
+            _engine_consecutive_failures[name] = _engine_consecutive_failures.get(name, 0) + 1
+            logger.info("Traduction (%s) : échec (%s)", name, exc)
+
+    if not attempted_any:
+        return f"[traduction automatique indisponible - tous les moteurs sont en échec systématique pour cette exécution] {text}"
 
     _consecutive_translate_failures[0] += 1
     logger.warning(
