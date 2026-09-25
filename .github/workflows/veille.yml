@@ -23,7 +23,10 @@ permissions:
 
 concurrency:
   group: veille-dt1
-  cancel-in-progress: false
+  # true : un nouveau run annule automatiquement un run précédent encore en
+  # cours (ex. bloqué) au lieu de rester en "Queued" à l'attendre
+  # indéfiniment.
+  cancel-in-progress: true
 
 jobs:
   run:
