@@ -17,6 +17,10 @@ on:
         description: "Simulation seulement (aucune écriture, aucun email)"
         type: boolean
         default: true
+      test_email:
+        description: "Forcer un envoi email de test (valide les identifiants SMTP, aucune écriture) — prioritaire sur Simulation seulement"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -49,16 +53,20 @@ jobs:
           app_password: "${{ secrets.GMAIL_APP_PASSWORD }}"
           EOF
 
+      - name: Veille (test email forcé, aucune écriture)
+        if: github.event_name == 'workflow_dispatch' && inputs.test_email
+        run: python main.py --dry-run --test-email --limit 1
+
       - name: Veille (simulation, rien n'est envoyé ni écrit)
-        if: github.event_name == 'workflow_dispatch' && inputs.dry_run
+        if: github.event_name == 'workflow_dispatch' && inputs.dry_run && ! inputs.test_email
         run: python main.py --dry-run
 
       - name: Veille (exécution réelle)
-        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && ! inputs.dry_run)
+        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && ! inputs.dry_run && ! inputs.test_email)
         run: python main.py
 
       - name: Commit des mises à jour
-        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && ! inputs.dry_run)
+        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && ! inputs.dry_run && ! inputs.test_email)
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
