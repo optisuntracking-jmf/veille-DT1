@@ -11,6 +11,7 @@ fichier Markdown cible, sans jamais toucher au reste du document.
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import difflib
 import hashlib
 import html
@@ -225,6 +226,24 @@ def _split_into_chunks(text: str, max_chars: int) -> list[str]:
     return chunks
 
 
+_TRANSLATE_CALL_TIMEOUT = 15.0  # secondes
+
+# GoogleTranslator/MyMemoryTranslator (deep-translator) n'exposent aucun
+# paramètre timeout sur leurs requêtes HTTP internes : un appel qui ne
+# répond jamais (fréquent en cas de blocage anti-abus depuis une IP de
+# datacenter, ex. GitHub Actions) resterait sinon bloqué indéfiniment et
+# gèlerait toute l'exécution. Chaque appel est donc exécuté dans un thread
+# à part, avec un délai maximal — le pool est partagé (jamais fermé) pour
+# ne jamais attendre un thread bloqué : un timeout abandonne simplement le
+# résultat, le thread sous-jacent meurt de lui-même à la fin du script.
+_TRANSLATE_EXECUTOR = concurrent.futures.ThreadPoolExecutor(max_workers=8, thread_name_prefix="translate")
+
+
+def _call_with_timeout(fn, text: str, timeout: float):
+    future = _TRANSLATE_EXECUTOR.submit(fn, text)
+    return future.result(timeout=timeout)
+
+
 def _translate_chunk(text: str) -> str:
     """Traduit un seul morceau de texte (sous la limite de longueur des
     moteurs) vers le français. Deux moteurs sont essayés dans l'ordre
@@ -251,7 +270,7 @@ def _translate_chunk(text: str) -> str:
         for attempt in range(2):
             _throttle_translate()
             try:
-                result = engine(text)
+                result = _call_with_timeout(engine, text, _TRANSLATE_CALL_TIMEOUT)
                 _last_translate_call[0] = time.time()
                 if result:
                     return result
