@@ -226,7 +226,17 @@ def _split_into_chunks(text: str, max_chars: int) -> list[str]:
     return chunks
 
 
-_TRANSLATE_CALL_TIMEOUT = 15.0  # secondes
+_TRANSLATE_CALL_TIMEOUT = 8.0  # secondes
+
+# Coupe-circuit : si les moteurs de traduction échouent N fois d'affilée
+# (blocage réseau/anti-abus persistant — ex. IP de datacenter GitHub
+# Actions bloquée par Google), inutile de retenter le même échec pour
+# chacun des dizaines d'items restants : ça borne le temps total d'une
+# exécution à quelques dizaines de secondes de détection, plutôt que des
+# dizaines de minutes. Remis à zéro dès qu'un appel réussit (reprise
+# automatique si le service redevient joignable en cours d'exécution).
+_CIRCUIT_BREAKER_THRESHOLD = 5
+_consecutive_translate_failures = [0]
 
 # GoogleTranslator/MyMemoryTranslator (deep-translator) n'exposent aucun
 # paramètre timeout sur leurs requêtes HTTP internes : un appel qui ne
@@ -265,6 +275,9 @@ def _translate_chunk(text: str) -> str:
     if not engines:
         return f"[traduction indisponible - dépendance manquante] {text}"
 
+    if _consecutive_translate_failures[0] >= _CIRCUIT_BREAKER_THRESHOLD:
+        return f"[traduction automatique indisponible - service injoignable, réessais suspendus pour cette exécution] {text}"
+
     last_error = None
     for name, engine in engines:
         for attempt in range(2):
@@ -273,15 +286,21 @@ def _translate_chunk(text: str) -> str:
                 result = _call_with_timeout(engine, text, _TRANSLATE_CALL_TIMEOUT)
                 _last_translate_call[0] = time.time()
                 if result:
+                    _consecutive_translate_failures[0] = 0
                     return result
             except Exception as exc:  # pragma: no cover - dépend du réseau
                 _last_translate_call[0] = time.time()
                 last_error = exc
                 if attempt == 0:
                     logger.info("Traduction (%s) : nouvelle tentative après erreur (%s)", name, exc)
-                    time.sleep(2.0)
+                    time.sleep(1.0)
 
-    logger.warning("Echec de traduction automatique (tous moteurs) : %s", last_error)
+    _consecutive_translate_failures[0] += 1
+    logger.warning(
+        "Echec de traduction automatique (tous moteurs), %d échec(s) consécutif(s) : %s",
+        _consecutive_translate_failures[0],
+        last_error,
+    )
     return f"[traduction automatique indisponible] {text}"
 
 
