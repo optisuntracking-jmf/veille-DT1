@@ -265,6 +265,12 @@ def _call_with_timeout(fn, text: str, timeout: float):
     return future.result(timeout=timeout)
 
 
+# Même adresse que pubmed.email dans config.yaml (contact NCBI). MyMemory
+# multiplie son quota gratuit anonyme par 10 (5000 -> 50000 caractères/jour)
+# si on joint un email de contact à la requête — sans clé, sans inscription.
+_MYMEMORY_CONTACT_EMAIL = "optisun.tracking@gmail.com"
+
+
 def _translate_chunk(text: str) -> str:
     """Traduit un seul morceau de texte (sous la limite de longueur des
     moteurs) vers le français. Deux moteurs sont essayés dans l'ordre
@@ -280,7 +286,12 @@ def _translate_chunk(text: str) -> str:
         # MyMemory utilise des codes de locale (fr-FR, en-GB...), pas les
         # codes courts de GoogleTranslator.
         engines.append(
-            ("MyMemory", lambda t: MyMemoryTranslator(source="en-GB", target="fr-FR").translate(t))
+            (
+                "MyMemory",
+                lambda t: MyMemoryTranslator(
+                    source="en-GB", target="fr-FR", email=_MYMEMORY_CONTACT_EMAIL
+                ).translate(t),
+            )
         )
 
     if not engines:
