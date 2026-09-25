@@ -1751,6 +1751,15 @@ def main(argv=None) -> int:
 
     collector = setup_logging(BASE_DIR / cfg.get("log_file", "logs/veille.log"), debug=args.debug)
 
+    if args.test_email and not args.ignore_dedup:
+        # --test-email sert à valider la config SMTP / voir le rendu du
+        # mail : mieux vaut y montrer les dernières parutions réelles que
+        # "aucune nouveauté" simplement parce qu'un run réel précédent les a
+        # déjà marquées vues. N'affecte jamais une exécution réelle (sans
+        # --test-email), donc jamais le fonctionnement en production.
+        args.ignore_dedup = True
+        logger.info("--test-email implique --ignore-dedup (pour afficher du contenu réel dans le mail de test).")
+
     summary: dict = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "dry_run": bool(args.dry_run),

@@ -55,7 +55,10 @@ jobs:
 
       - name: Veille (test email forcé, aucune écriture)
         if: github.event_name == 'workflow_dispatch' && inputs.test_email
-        run: python main.py --dry-run --test-email --limit 1
+        # --test-email implique --ignore-dedup côté main.py : montre les
+        # dernières parutions réelles plutôt que "aucune nouveauté" simplement
+        # parce qu'un run réel précédent les a déjà marquées vues.
+        run: python main.py --dry-run --test-email --limit 5
 
       - name: Veille (simulation, rien n'est envoyé ni écrit)
         if: github.event_name == 'workflow_dispatch' && inputs.dry_run && ! inputs.test_email
