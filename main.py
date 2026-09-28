@@ -54,7 +54,12 @@ SENTENCE_SPLIT_RE = re.compile(r'(?<=[.!?])\s+')
 # ClinicalTrials.gov n'ont pas besoin de ce filtre : leurs requêtes
 # elles-mêmes imposent déjà "type 1 diabetes".
 T1D_RELEVANCE_RE = re.compile(
-    r"type\s*1\s*diabetes|type-1\s*diabetes|\bt1d\b|diabète\s+de\s+type\s*1|\bdt1\b",
+    r"type[\s-]*(?:1|i|one)\s+diabetes|\bt1dm?\b|diabète\s+de\s+type\s*(?:1|i)\b|\bdt1\b"
+    r"|insulin[\s-]dependent\s+diabetes|juvenile\s+diabetes|autoimmune\s+diabetes"
+    r"|diabète\s+insulino-?dépendant|diabète\s+juvénile|diabète\s+auto-?immun"
+    r"|artificial\s+pancreas|pancréas\s+artificiel|bionic\s+pancreas"
+    r"|islet\s+(?:cell\s+)?transplant|greffe\s+d'îlots|islets?\s+of\s+langerhans|îlots\s+de\s+langerhans"
+    r"|teplizumab|tzield|zimislecel|lantidra",
     re.IGNORECASE,
 )
 
@@ -579,7 +584,9 @@ def fetch_pubmed(cfg: dict, window_start: datetime, window_end: datetime) -> tup
             }
         )
         try:
-            resp = requests.get(f"{EUTILS_BASE}/esearch.fcgi", params=params, timeout=30)
+            # POST : les requêtes élargies dépassent la longueur d'URL
+            # acceptée en GET (414 Request-URI Too Long constaté).
+            resp = requests.post(f"{EUTILS_BASE}/esearch.fcgi", data=params, timeout=30)
             resp.raise_for_status()
             pmids = resp.json().get("esearchresult", {}).get("idlist", [])
         except Exception as exc:
@@ -1619,10 +1626,15 @@ def _run(args: argparse.Namespace, cfg: dict, summary: dict) -> int:
             logger.error("Source %s en échec complet : %s", label, exc)
             summary["sources"][key] = {"found": 0, "filtered_out": 0, "error": str(exc)}
 
+    # Un même article peut remonter par plusieurs requêtes (ex. les deux
+    # requêtes PubMed "Biologique") : on ne garde que la première occurrence.
+    unique_items: dict[str, RawItem] = {}
+    for it in raw_items:
+        unique_items.setdefault(it.dedup_key, it)
     if not args.ignore_dedup:
-        new_items = [it for it in raw_items if it.dedup_key not in seen]
+        new_items = [it for it in unique_items.values() if it.dedup_key not in seen]
     else:
-        new_items = raw_items
+        new_items = list(unique_items.values())
     summary["found_total"] = len(raw_items)
     summary["after_dedup"] = len(new_items)
     logger.info("%d nouvel(le)s élément(s) après déduplication", len(new_items))

@@ -19,10 +19,10 @@ email:
   # Un seul destinataire pendant les tests. Pour repasser à plusieurs
   # destinataires, décommenter le bloc to_addrs ci-dessous et supprimer
   # (ou commenter) la ligne to_addr.
-  to_addr: "jmfusella@free.fr"
-  # to_addrs:
-  #   - "jmfusella@free.fr"
-  #   - "marionfusella@gmail.com"
+  #to_addr: "jmfusella@free.fr"
+  to_addrs:
+     - "jmfusella@free.fr"
+     - "marionfusella@gmail.com"
   # Fichier séparé (exclu du suivi de version) contenant le mot de passe
   # d'application Gmail. Voir email_credentials.example.yaml pour le format
   # et README.md pour comment le générer.
@@ -41,7 +41,7 @@ date_format: "%d/%m/%Y"
 window_days: 15
 
 # Nombre max d'entrées insérées par exécution (garde-fou anti-flood).
-max_entries_per_run: 25
+max_entries_per_run: 40
 
 # --- PubMed (NCBI E-utilities) -------------------------------------------
 pubmed:
@@ -50,27 +50,96 @@ pubmed:
   api_key: ""
   # Obligatoire par les CGU NCBI : email de contact identifiant l'appelant.
   email: "optisun.tracking@gmail.com"
-  max_results_per_query: 25
+  max_results_per_query: 40
+  # Requêtes élargies le 28/09/2026 (testées sur la fenêtre 13-28/09/2026 :
+  # ~26 -> ~45 articles, aucun article de l'ancienne version perdu).
+  # La clause "maladie" accepte les variantes (T1D, T1DM, type I, auto-immun,
+  # insulinodépendant, juvénile, LADA, MeSH). Le "*" est une troncature
+  # PubMed (transplant* = transplant, transplantation, transplanted...).
+  # Termes volontairement écartés car trop bruyants à l'essai : "CGM" seul,
+  # "continuous glucose monitoring" seul, "insulin delivery" seul (études
+  # observationnelles de métriques glycémiques) et "islet autoantibod*"
+  # (épidémiologie des auto-anticorps).
   queries:
     - axis: "Biologique"
       query: >-
-        ("islet transplantation"[tiab] OR "stem cell-derived islet"[tiab]
-        OR "encapsulated islet"[tiab] OR "beta cell replacement"[tiab]
-        OR "stem cell therapy"[tiab] OR "gene therapy"[tiab]
-        OR "CRISPR"[tiab])
-        AND ("type 1 diabetes"[tiab] OR "type 1 diabetes mellitus"[tiab])
+        ("islet transplantation"[tiab] OR "islet transplant*"[tiab]
+        OR "islet allograft*"[tiab] OR "Islets of Langerhans Transplantation"[mh]
+        OR "islets of Langerhans"[tiab] OR "pancreatic islet*"[tiab]
+        OR "pancreas transplant*"[tiab] OR "stem cell-derived islet*"[tiab]
+        OR "stem cell-derived beta*"[tiab] OR "SC-islet*"[tiab]
+        OR "beta cell replacement"[tiab] OR "beta-cell replacement"[tiab]
+        OR "insulin-producing cell*"[tiab] OR "insulin-secreting cell*"[tiab]
+        OR "encapsulated islet*"[tiab] OR "islet encapsulation"[tiab]
+        OR "cell encapsulation"[tiab] OR "macroencapsulation"[tiab]
+        OR "microencapsulation"[tiab] OR "immunoisolat*"[tiab]
+        OR "bioartificial pancreas"[tiab] OR "xenotransplant*"[tiab]
+        OR "hypoimmune"[tiab] OR "stem cell therapy"[tiab]
+        OR "gene therapy"[tiab] OR "gene editing"[tiab] OR "CRISPR"[tiab]
+        OR "beta cell regeneration"[tiab] OR "beta-cell regeneration"[tiab]
+        OR "islet organoid*"[tiab])
+        AND ("type 1 diabetes"[tiab] OR "type 1 diabetes mellitus"[tiab]
+        OR "type I diabetes"[tiab] OR "T1D"[tiab] OR "T1DM"[tiab]
+        OR "Diabetes Mellitus, Type 1"[mh] OR "autoimmune diabetes"[tiab]
+        OR "insulin-dependent diabetes"[tiab] OR "juvenile diabetes"[tiab]
+        OR "latent autoimmune diabetes"[tiab])
+    # Remplacement des cellules productrices d'insuline SANS mention explicite
+    # de "type 1" dans le résumé. Ajoutée après avoir manqué l'implant
+    # "bouclier cristallin" du Technion/MIT (PMID 41604464, Sci Transl Med
+    # 2026) dont le résumé ne dit que "diabetic mice" et "β cells".
+    # Ces termes (encapsulation/greffe de cellules bêta ou d'îlots) sont
+    # quasi exclusifs au DT1, d'où la seule exigence "diabet*".
+    - axis: "Biologique"
+      query: >-
+        ("immunoisolat*"[tiab] OR "encapsulat*"[tiab]
+        OR "bioartificial pancreas"[tiab] OR "islet transplant*"[tiab]
+        OR "islet allograft*"[tiab] OR "beta cell replacement"[tiab]
+        OR "beta-cell replacement"[tiab] OR "stem cell-derived beta*"[tiab]
+        OR "stem cell-derived islet*"[tiab] OR "SC-beta"[tiab]
+        OR "SC-islet*"[tiab] OR "insulin-producing cell*"[tiab]
+        OR "xenotransplant*"[tiab] OR "hypoimmune"[tiab])
+        AND ("beta cell*"[tiab] OR "beta-cell*"[tiab] OR "islet*"[tiab]
+        OR "Insulin-Secreting Cells"[mh] OR "Islets of Langerhans"[mh]
+        OR "insulin-producing"[tiab])
+        AND (diabet*[tiab] OR "glycemic control"[tiab] OR normoglyc*[tiab])
     - axis: "Mécanique"
       query: >-
-        ("continuous glucose monitor"[tiab] OR "insulin pump"[tiab]
+        ("continuous glucose monitor"[tiab]
+        OR "continuous glucose monitoring system*"[tiab] OR "CGM system*"[tiab]
+        OR "CGM device*"[tiab] OR "CGM sensor*"[tiab]
+        OR "flash glucose monitoring"[tiab] OR "implantable glucose sensor*"[tiab]
+        OR "calibration-free"[tiab] OR "insulin pump*"[tiab]
+        OR "patch pump*"[tiab] OR "Insulin Infusion Systems"[mh]
         OR "automated insulin delivery"[tiab] OR "closed loop"[tiab]
-        OR "artificial pancreas"[tiab] OR "hybrid closed-loop"[tiab])
-        AND ("type 1 diabetes"[tiab] OR "type 1 diabetes mellitus"[tiab])
+        OR "closed-loop"[tiab] OR "artificial pancreas"[tiab]
+        OR "Pancreas, Artificial"[mh] OR "bionic pancreas"[tiab]
+        OR "dual-hormone"[tiab] OR "bihormonal"[tiab] OR "smart insulin"[tiab]
+        OR "glucose-responsive insulin"[tiab] OR "connected insulin pen*"[tiab]
+        OR "smart insulin pen*"[tiab])
+        AND ("type 1 diabetes"[tiab] OR "type 1 diabetes mellitus"[tiab]
+        OR "type I diabetes"[tiab] OR "T1D"[tiab] OR "T1DM"[tiab]
+        OR "Diabetes Mellitus, Type 1"[mh] OR "autoimmune diabetes"[tiab]
+        OR "insulin-dependent diabetes"[tiab] OR "juvenile diabetes"[tiab]
+        OR "latent autoimmune diabetes"[tiab])
     - axis: "Immunothérapie"
       query: >-
-        ("teplizumab"[tiab] OR "anti-CD3"[tiab] OR "regulatory T cell"[tiab]
-        OR "tolerogenic dendritic cell"[tiab] OR "immunotherapy"[tiab]
-        OR "abatacept"[tiab] OR "rituximab"[tiab])
-        AND ("type 1 diabetes"[tiab] OR "type 1 diabetes mellitus"[tiab])
+        ("teplizumab"[tiab] OR "Tzield"[tiab] OR "otelixizumab"[tiab]
+        OR "anti-CD3"[tiab] OR "regulatory T cell*"[tiab] OR "Treg*"[tiab]
+        OR "tolerogenic"[tiab] OR "immune tolerance"[tiab]
+        OR "immunotherapy"[tiab] OR "immunomodulat*"[tiab]
+        OR "antigen-specific"[tiab] OR "abatacept"[tiab] OR "rituximab"[tiab]
+        OR "golimumab"[tiab] OR "baricitinib"[tiab] OR "JAK inhibitor*"[tiab]
+        OR "antithymocyte globulin"[tiab] OR "ustekinumab"[tiab]
+        OR "verapamil"[tiab] OR "oral insulin"[tiab] OR "GAD-alum"[tiab]
+        OR "Diamyd"[tiab] OR "BCG vaccin*"[tiab] OR "CAR-T"[tiab]
+        OR "CAR T"[tiab] OR "disease-modifying"[tiab]
+        OR "stage 2 type 1 diabetes"[tiab] OR "beta cell preservation"[tiab]
+        OR "beta-cell preservation"[tiab] OR "C-peptide preservation"[tiab])
+        AND ("type 1 diabetes"[tiab] OR "type 1 diabetes mellitus"[tiab]
+        OR "type I diabetes"[tiab] OR "T1D"[tiab] OR "T1DM"[tiab]
+        OR "Diabetes Mellitus, Type 1"[mh] OR "autoimmune diabetes"[tiab]
+        OR "insulin-dependent diabetes"[tiab] OR "juvenile diabetes"[tiab]
+        OR "latent autoimmune diabetes"[tiab])
 
 # --- ClinicalTrials.gov API v2 --------------------------------------------
 clinicaltrials:
@@ -188,6 +257,24 @@ axis_keywords:
     - "gene therapy"
     - "thérapie génique"
     - "crispr"
+    - "pancréas"
+    - "pancreatic"
+    - "langerhans"
+    - "insulin-producing"
+    - "insulin-secreting"
+    - "productrice d'insuline"
+    - "sécrétrice d'insuline"
+    - "immunoisolat"
+    - "immuno-isolat"
+    - "bioartificial"
+    - "bioartificiel"
+    - "xenotransplant"
+    - "xénogreffe"
+    - "hypoimmune"
+    - "gene editing"
+    - "édition génique"
+    - "organoid"
+    - "organoïde"
   Mécanique:
     - "glucose monitor"
     - "cgm"
@@ -199,6 +286,22 @@ axis_keywords:
     - "pancréas artificiel"
     - "automated insulin delivery"
     - "aid system"
+    - "continuous glucose"
+    - "glucose sensor"
+    - "capteur de glucose"
+    - "mesure continue du glucose"
+    - "patch pump"
+    - "pompe patch"
+    - "bionic pancreas"
+    - "pancréas bionique"
+    - "dual-hormone"
+    - "bihormonal"
+    - "bi-hormonal"
+    - "smart insulin"
+    - "insuline intelligente"
+    - "glucose-responsive insulin"
+    - "insulin pen"
+    - "stylo à insuline"
   Immunothérapie:
     - "immunotherapy"
     - "immunothérapie"
@@ -210,6 +313,27 @@ axis_keywords:
     - "cellule dendritique"
     - "rituximab"
     - "abatacept"
+    - "tzield"
+    - "otelixizumab"
+    - "treg"
+    - "tolérance immunitaire"
+    - "immune tolerance"
+    - "tolerogenic"
+    - "tolérogène"
+    - "immunomodulat"
+    - "golimumab"
+    - "baricitinib"
+    - "jak inhibitor"
+    - "inhibiteur de jak"
+    - "antithymocyte"
+    - "verapamil"
+    - "vérapamil"
+    - "oral insulin"
+    - "insuline orale"
+    - "gad-alum"
+    - "diamyd"
+    - "car-t"
+    - "car t cell"
 
 maturity_keywords:
   Préclinique:
@@ -219,6 +343,17 @@ maturity_keywords:
     - "modèle murin"
     - "in vitro"
     - "animal model"
+    - "mice"
+    - "murine"
+    - "mouse"
+    - "souris"
+    - "rodent"
+    - "rongeur"
+    - "rats"
+    - "non-human primate"
+    - "nonhuman primate"
+    - "primate non humain"
+    - "primates non humains"
   "Phase 1":
     - "phase 1"
     - "phase i "
