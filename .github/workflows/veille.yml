@@ -35,6 +35,11 @@ concurrency:
 jobs:
   run:
     runs-on: ubuntu-latest
+    env:
+      # Clé DeepL API Free (moteur de traduction principal) ; si le secret
+      # n'existe pas, la variable est vide et main.py se rabat sur
+      # Google/MyMemory sans clé.
+      DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4

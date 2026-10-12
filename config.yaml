@@ -421,3 +421,10 @@ risk_keywords:
   - "effet secondaire"
   - "syndrome de libération de cytokines"
   - "complication"
+
+# Audit des sources (lignes « Audit » et « Verdict » de chaque nouveauté).
+# Calculé uniquement à partir des métadonnées officielles (PubMed,
+# ClinicalTrials.gov) : jamais d'information inventée. Seuil à partir duquel
+# un essai randomisé chez l'humain est jugé « À retenir » (confiance élevée).
+audit:
+  taille_echantillon_solide: 100

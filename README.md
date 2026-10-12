@@ -241,7 +241,23 @@ clé Anthropic/OpenAI, il suffira de remplacer `translate_fr()` par un
 appel à cette API avec un prompt strict (« ne reformule qu'à partir de
 CE texte, n'ajoute aucune information absente »).
 
-En cas d'échec des deux moteurs gratuits (quota, blocage réseau), le
+### Moteur principal : DeepL API Free (12/10/2026)
+
+Les deux moteurs sans clé ne suffisent plus depuis GitHub Actions : un run
+traduit environ 78 000 caractères, au-delà du quota MyMemory (50 000/jour),
+et Google bride les IP de GitHub. DeepL API Free (500 000 caractères/mois,
+gratuit) est donc essayé en premier, Google et MyMemory restant en repli.
+
+1. Créer un compte « DeepL API Free » sur https://www.deepl.com/pro-api
+   (une carte est demandée pour vérification, sans débit) et copier la clé
+   (elle se termine par `:fx`).
+2. Dans GitHub : *Settings → Secrets and variables → Actions → New
+   repository secret*, nom `DEEPL_API_KEY`, valeur = la clé.
+3. En local (facultatif) : `$env:DEEPL_API_KEY="…"` avant `python main.py`.
+
+Sans ce secret, le script fonctionne comme avant (Google puis MyMemory).
+
+En cas d'échec de tous les moteurs (quota, blocage réseau), le
 texte source est conservé, préfixé de `[traduction automatique
 indisponible]`, plutôt que d'insérer une traduction inventée ou de faire
 échouer toute l'exécution.
@@ -390,6 +406,30 @@ toujours la toute dernière tentative, y compris en cas d'échec complet
 - **Faible** : tout le reste (association sans DOI/NCT, domaine non
   reconnu) — toujours inséré avec la mention explicite « non confirmé »,
   jamais supprimé silencieusement.
+
+## Audit des sources et verdict (fonctions `audit_*`)
+
+Chaque nouveauté reçoit deux lignes supplémentaires, dans le `.md` et dans
+l'email (où les études sont classées par verdict) :
+
+- **Audit** : type d'étude, population (humains, animal, laboratoire),
+  effectif, groupe de comparaison, financement et conflits d'intérêts
+  (PubMed) ou promoteur et résultats (ClinicalTrials.gov), source primaire
+  ou secondaire. Tout vient des métadonnées officielles ou du résumé ; ce qui
+  manque est écrit « non indiqué ».
+- **Verdict** : « À retenir », « À retenir avec réserves », « À suivre »
+  (essai sans résultats) ou « À écarter comme preuve » (avis, communiqué
+  sans source), avec une confiance élevée, moyenne ou faible et sa raison.
+  Un lien avec l'industrie plafonne la confiance à « moyenne ».
+- Seuil d'effectif réglable : `audit.taille_echantillon_solide` dans
+  `config.yaml` (100 par défaut).
+- L'email commence par : « Aide à la compréhension, pas un avis médical :
+  toute décision de traitement se prend avec ton diabétologue. »
+
+La ligne « Niveau de confiance » (fiabilité de la source, ci-dessus) est
+conservée telle quelle ; les fiches des sections 2 à 4 ne sont pas modifiées.
+
+Tests : `python -m unittest discover tests`.
 
 ## Limites connues
 

@@ -17,6 +17,7 @@ import hashlib
 import html
 import json
 import logging
+import os
 import re
 import smtplib
 import sys
@@ -86,6 +87,8 @@ class RawItem:
     confidence_note: str
     source_name: str
     source_url: str
+    audit: str = ""
+    verdict: str = ""
 
 
 @dataclass
@@ -103,6 +106,8 @@ class Entry:
     confidence_note: str
     source_name: str
     source_url: str
+    audit: str = ""
+    verdict: str = ""
 
 
 @dataclass
@@ -275,16 +280,39 @@ def _call_with_timeout(fn, text: str, timeout: float):
 # si on joint un email de contact à la requête — sans clé, sans inscription.
 _MYMEMORY_CONTACT_EMAIL = "optisun.tracking@gmail.com"
 
+# DeepL API Free (500 000 caractères/mois) : API officielle avec clé, non
+# bridée depuis les IP de GitHub Actions contrairement à Google/MyMemory
+# sans clé. Clé lue dans la variable d'environnement DEEPL_API_KEY (secret
+# GitHub), jamais dans le code ; sans clé, le moteur est simplement ignoré.
+# Appel direct plutôt que via deep-translator : ce dernier passe la clé en
+# paramètre d'URL (auth_key), mode d'authentification abandonné par DeepL au
+# profit de l'en-tête Authorization.
+_DEEPL_URL = "https://api-free.deepl.com/v2/translate"
+
+
+def _translate_deepl(text: str) -> str:
+    resp = requests.post(
+        _DEEPL_URL,
+        headers={"Authorization": f"DeepL-Auth-Key {os.environ['DEEPL_API_KEY']}"},
+        data={"text": text, "target_lang": "FR"},
+        timeout=_TRANSLATE_CALL_TIMEOUT,
+    )
+    resp.raise_for_status()  # 456 = quota mensuel épuisé, 403 = clé invalide
+    return resp.json()["translations"][0]["text"]
+
 
 def _translate_chunk(text: str) -> str:
     """Traduit un seul morceau de texte (sous la limite de longueur des
-    moteurs) vers le français. Deux moteurs sont essayés dans l'ordre
-    (Google puis MyMemory, tous deux via deep-translator, sans clé). Le
+    moteurs) vers le français. Les moteurs sont essayés dans l'ordre :
+    DeepL (si la clé DEEPL_API_KEY est définie), puis Google et MyMemory
+    (via deep-translator, sans clé). Le
     texte n'est jamais réécrit ni résumé ici : c'est une traduction, pas une
     reformulation. En cas d'échec des deux moteurs, le texte source est
     renvoyé, préfixé d'un marqueur explicite, plutôt que d'inventer une
     traduction."""
     engines = []
+    if os.environ.get("DEEPL_API_KEY"):
+        engines.append(("DeepL", _translate_deepl))
     if GoogleTranslator is not None:
         engines.append(("Google", lambda t: GoogleTranslator(source="auto", target="fr").translate(t)))
     if MyMemoryTranslator is not None:
@@ -396,6 +424,240 @@ def classify_confidence(
             return "Moyen", "communiqué officiel d'organisme/entreprise, sans DOI/NCT"
         return "Faible", "non confirmé — pas de lien vers une source primaire"
     return "Faible", "non confirmé"
+
+
+# ---------------------------------------------------------------------------
+# Audit des sources (grille « recherche-prompt », mode A)
+# ---------------------------------------------------------------------------
+#
+# Calculé UNIQUEMENT à partir des métadonnées officielles (types de
+# publication et MeSH de PubMed, champs de conception de ClinicalTrials.gov)
+# et de mots-clés du résumé : aucune IA, aucune information inventée. Ce qui
+# manque est écrit « non indiqué ». Le verdict est une aide à la lecture,
+# pas un avis médical.
+
+VERDICT_RETENIR = "À retenir"
+VERDICT_RESERVES = "À retenir avec réserves"
+VERDICT_SUIVRE = "À suivre"
+VERDICT_ECARTER = "À écarter comme preuve"
+VERDICT_ORDER = {VERDICT_RETENIR: 0, VERDICT_RESERVES: 1, VERDICT_SUIVRE: 2, VERDICT_ECARTER: 3}
+DEFAULT_SAMPLE_THRESHOLD = 100
+DISCLAIMER = ("Aide à la compréhension, pas un avis médical : toute décision de "
+              "traitement se prend avec ton diabétologue.")
+
+# Types de publication PubMed, par ordre de priorité.
+_PUBTYPE_RULES = [
+    ({"Meta-Analysis", "Systematic Review"}, "meta", "Méta-analyse ou revue systématique"),
+    ({"Randomized Controlled Trial"}, "rct", "Essai randomisé contrôlé"),
+    ({"Clinical Trial, Phase III", "Clinical Trial, Phase IV"}, "trial", "Essai clinique de phase 3-4"),
+    ({"Clinical Trial, Phase I", "Clinical Trial, Phase II", "Clinical Trial",
+      "Controlled Clinical Trial", "Pragmatic Clinical Trial"}, "trial", "Essai clinique"),
+    ({"Observational Study", "Multicenter Study", "Comparative Study"}, "obs", "Étude d'observation ou comparative"),
+    ({"Case Reports"}, "case", "Cas clinique"),
+    ({"Review"}, "review", "Revue narrative (synthèse d'autres travaux)"),
+    ({"Editorial", "Comment", "Letter", "News"}, "opinion", "Éditorial, commentaire ou lettre"),
+]
+_ANIMAL_RE = re.compile(
+    r"\b(mice|mouse|murine|rats?|rodents?|zebrafish|porcine|pigs?|canine|dogs?|"
+    r"non[- ]human primates?|macaques?|NOD)\b", re.IGNORECASE)
+_LAB_RE = re.compile(
+    r"\b(in vitro|cell lines?|organoids?|iPSCs?|cultured cells|ex vivo)\b", re.IGNORECASE)
+_HUMAN_NOUNS = (r"patients|participants|children|adolescents|adults|individuals|subjects|"
+                r"people|youths?|persons|volunteers|recipients")
+_HUMAN_RE = re.compile(rf"\b({_HUMAN_NOUNS})\b", re.IGNORECASE)
+_SAMPLE_RE = re.compile(
+    rf"(?<![\d.,])(\d{{1,3}}(?:,\d{{3}})+|\d+)\s+(?:[A-Za-z-]+\s+){{0,3}}?(?:{_HUMAN_NOUNS})\b",
+    re.IGNORECASE)
+_N_EQUALS_RE = re.compile(r"\b[nN]\s*=\s*(\d{1,3}(?:,\d{3})+|\d+)")
+_COMPARISON_RE = re.compile(
+    r"placebo|randomi[sz]|control group|controls\b|sham|versus|\bvs\.?\s|compared (?:with|to)",
+    re.IGNORECASE)
+_NO_COI_RE = re.compile(
+    r"no (?:competing|conflicts?|potential conflicts?|relevant)|nothing to disclose|"
+    r"declare(?:s|d)? (?:that they have )?no|none declared|no financial", re.IGNORECASE)
+_INDUSTRY_RE = re.compile(
+    r"\b(inc\.?|ltd\.?|llc|gmbh|s\.a\.|ag|pharma\w*|therapeutics|biotech\w*|novo nordisk|"
+    r"lilly|sanofi|vertex|medtronic|dexcom|insulet|tandem|abbott|roche|provention|"
+    r"employee|stock|shareholder|consult\w*|honorari\w*|advisory board|speaker)\b",
+    re.IGNORECASE)
+
+
+def _largest_sample(text: str) -> Optional[int]:
+    values = []
+    for match in list(_SAMPLE_RE.finditer(text)) + list(_N_EQUALS_RE.finditer(text)):
+        try:
+            value = int(match.group(1).replace(",", ""))
+        except ValueError:
+            continue
+        if 1 < value < 1_000_000 and not (1900 <= value <= 2100):
+            values.append(value)
+    return max(values) if values else None
+
+
+def _cap_for_industry(confidence: str, reason: str, industry: bool) -> tuple[str, str]:
+    if industry and confidence == "élevée":
+        return "moyenne", reason + " ; lien avec l'industrie : attendre une confirmation indépendante"
+    if industry:
+        return confidence, reason + " ; lien avec l'industrie déclaré"
+    return confidence, reason
+
+
+def _format_verdict(verdict: str, confidence: str, reason: str) -> str:
+    if confidence:
+        return f"{verdict} — confiance {confidence} : {reason}"
+    return f"{verdict} — {reason}"
+
+
+def audit_pubmed(article, abstract: str, title: str,
+                 threshold: int = DEFAULT_SAMPLE_THRESHOLD) -> tuple[str, str]:
+    """Audit d'un article PubMed à partir de ses métadonnées officielles."""
+    pubtypes = {(n.text or "").strip() for n in article.findall(".//PublicationTypeList/PublicationType")}
+    mesh = {(n.text or "").strip() for n in article.findall(".//MeshHeadingList/MeshHeading/DescriptorName")}
+    text = f"{title} {abstract}"
+
+    kind, type_label = "other", "Type d'étude non précisé dans PubMed"
+    for names, k, label in _PUBTYPE_RULES:
+        if pubtypes & names:
+            kind, type_label = k, label
+            break
+
+    # Population : MeSH d'abord (indexation officielle), sinon mots-clés.
+    if "Humans" in mesh:
+        population = "humains"
+    elif mesh & {"Animals", "Mice", "Rats", "Mice, Inbred NOD", "Swine", "Dogs"}:
+        population = "animal"
+    elif _ANIMAL_RE.search(text) and not _SAMPLE_RE.search(text):
+        population = "animal"
+    elif _LAB_RE.search(text) and not _HUMAN_RE.search(text):
+        population = "laboratoire"
+    elif _HUMAN_RE.search(text):
+        population = "humains"
+    else:
+        population = "non indiquée"
+
+    sample = _largest_sample(abstract) if population == "humains" else None
+    sample_label = f"{sample} participants" if sample else "effectif non indiqué dans le résumé"
+
+    if kind in ("meta", "review", "opinion"):
+        comparison = "sans objet"
+    elif kind == "rct" or _COMPARISON_RE.search(abstract):
+        comparison = "oui"
+    else:
+        comparison = "non indiqué"
+
+    agencies = []
+    for node in article.findall(".//GrantList/Grant/Agency"):
+        name = (node.text or "").strip()
+        if name and name not in agencies:
+            agencies.append(name)
+    coi = " ".join((n.text or "") for n in article.findall(".//CoiStatement")).strip()
+    funding = f"financement : {', '.join(agencies[:2])}" if agencies else "financement : non indiqué"
+    if not coi:
+        coi_label = "conflits d'intérêts : non indiqués"
+    elif _NO_COI_RE.search(coi):
+        coi_label = "aucun conflit d'intérêts déclaré"
+    else:
+        coi_label = "conflits d'intérêts déclarés (voir l'article)"
+    industry = bool(_INDUSTRY_RE.search(" ".join(agencies))) or (
+        bool(coi) and not _NO_COI_RE.search(coi) and bool(_INDUSTRY_RE.search(coi)))
+
+    if kind in ("meta", "review"):
+        origin = "synthèse d'autres études (source secondaire)"
+    elif kind == "opinion":
+        origin = "avis (source secondaire)"
+    else:
+        origin = "étude originale (source primaire)"
+
+    audit = " · ".join([type_label, f"population : {population}", sample_label,
+                        f"groupe de comparaison : {comparison}", funding, coi_label, origin])
+
+    if kind == "opinion":
+        verdict, conf, reason = VERDICT_ECARTER, "faible", "avis ou commentaire, sans données nouvelles"
+    elif population in ("animal", "laboratoire"):
+        where = "chez l'animal" if population == "animal" else "en laboratoire"
+        verdict, conf, reason = VERDICT_RESERVES, "faible", f"étude {where} : piste de recherche, encore loin d'un traitement"
+    elif kind == "meta":
+        verdict, conf, reason = VERDICT_RETENIR, "élevée", "synthèse méthodique de plusieurs études"
+    elif kind == "rct" and sample and sample >= threshold:
+        verdict, conf, reason = VERDICT_RETENIR, "élevée", f"essai randomisé d'au moins {threshold} participants"
+    elif kind == "rct":
+        detail = f"moins de {threshold} participants" if sample else "taille non indiquée dans le résumé"
+        verdict, conf, reason = VERDICT_RESERVES, "moyenne", f"essai randomisé, {detail}"
+    elif kind in ("trial", "obs"):
+        verdict, conf, reason = VERDICT_RESERVES, "moyenne", "étude chez l'humain sans tirage au sort ou de phase précoce"
+    elif kind == "review":
+        verdict, conf, reason = VERDICT_RESERVES, "moyenne", "revue narrative, sans méthode systématique"
+    elif kind == "case":
+        verdict, conf, reason = VERDICT_RESERVES, "faible", "cas isolé"
+    else:
+        verdict, conf, reason = VERDICT_RESERVES, "faible", "type d'étude non précisé : lire le résumé"
+    conf, reason = _cap_for_industry(conf, reason, industry)
+    return audit, _format_verdict(verdict, conf, reason)
+
+
+_MASKING_LABELS = {"NONE": "en ouvert", "SINGLE": "simple aveugle", "DOUBLE": "double aveugle",
+                   "TRIPLE": "triple aveugle", "QUADRUPLE": "quadruple aveugle"}
+
+
+def audit_clinicaltrials(study: dict, threshold: int = DEFAULT_SAMPLE_THRESHOLD) -> tuple[str, str]:
+    """Audit d'un essai ClinicalTrials.gov à partir des champs de conception."""
+    ps = study.get("protocolSection", {})
+    study_type = get_path(ps, "designModule", "studyType") or ""
+    allocation = get_path(ps, "designModule", "designInfo", "allocation") or ""
+    masking = get_path(ps, "designModule", "designInfo", "maskingInfo", "masking") or ""
+    count = get_path(ps, "designModule", "enrollmentInfo", "count")
+    count_type = get_path(ps, "designModule", "enrollmentInfo", "type") or ""
+    sponsor_class = get_path(ps, "sponsorCollaboratorsModule", "leadSponsor", "class") or ""
+    has_results = bool(study.get("hasResults"))
+
+    if study_type == "INTERVENTIONAL":
+        type_label = "Essai interventionnel"
+        if allocation == "RANDOMIZED":
+            type_label += " randomisé"
+        if masking in _MASKING_LABELS:
+            type_label += f", {_MASKING_LABELS[masking]}"
+    elif study_type == "OBSERVATIONAL":
+        type_label = "Étude d'observation"
+    else:
+        type_label = "Type d'essai non précisé"
+
+    if isinstance(count, int) and count > 0:
+        sample_label = f"{count} participants" + (" (prévus)" if count_type == "ESTIMATED" else "")
+    else:
+        sample_label = "effectif non indiqué"
+    comparison = "oui" if allocation == "RANDOMIZED" else "non indiqué"
+    industry = sponsor_class == "INDUSTRY"
+    sponsor_label = "promoteur industriel" if industry else ("promoteur public ou académique" if sponsor_class else "promoteur non indiqué")
+    results_label = "résultats déposés sur le registre" if has_results else "protocole enregistré, pas encore de résultats"
+    audit = " · ".join([type_label, "population : humains", sample_label,
+                        f"groupe de comparaison : {comparison}", sponsor_label, results_label,
+                        "registre officiel (source primaire)"])
+
+    if not has_results:
+        return audit, _format_verdict(VERDICT_SUIVRE, "", "essai en cours ou sans résultats publiés")
+    conf, reason = "moyenne", "résultats du registre, à confirmer par une publication"
+    conf, reason = _cap_for_industry(conf, reason, industry)
+    return audit, _format_verdict(VERDICT_RESERVES, conf, reason)
+
+
+def audit_rss(cites_primary: bool) -> tuple[str, str]:
+    """Audit d'un communiqué (flux RSS) : toujours une source secondaire."""
+    if cites_primary:
+        audit = "Communiqué · cite une étude ou un essai (DOI/NCT) · source secondaire"
+        return audit, _format_verdict(VERDICT_RESERVES, "faible", "communiqué : lire l'étude citée avant de conclure")
+    audit = "Communiqué · ne cite pas d'étude vérifiable · source secondaire"
+    return audit, _format_verdict(VERDICT_ECARTER, "faible", "communiqué sans lien vers une source primaire")
+
+
+def verdict_rank(verdict: str) -> int:
+    for label, rank in VERDICT_ORDER.items():
+        if verdict.startswith(label):
+            # « À retenir avec réserves » commence aussi par « À retenir » :
+            # on teste le libellé le plus long en premier.
+            if label == VERDICT_RETENIR and verdict.startswith(VERDICT_RESERVES):
+                continue
+            return rank
+    return len(VERDICT_ORDER)
 
 
 # ---------------------------------------------------------------------------
@@ -514,7 +776,7 @@ def extract_country_from_affiliations(article) -> str:
     return ", ".join(sorted(found)[:3])
 
 
-def _parse_pubmed_article(article, axis: str) -> Optional[RawItem]:
+def _parse_pubmed_article(article, axis: str, threshold: int = DEFAULT_SAMPLE_THRESHOLD) -> Optional[RawItem]:
     pmid = article.findtext(".//PMID")
     title = article.findtext(".//Article/ArticleTitle") or ""
     abstract_parts = [
@@ -540,6 +802,7 @@ def _parse_pubmed_article(article, axis: str) -> Optional[RawItem]:
     source_url = f"https://doi.org/{doi}" if doi else f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/"
 
     confidence, note = classify_confidence("pubmed", bool(doi), False, None, [])
+    audit, verdict = audit_pubmed(article, abstract, title, threshold)
 
     return RawItem(
         dedup_key=dedup_key,
@@ -554,12 +817,15 @@ def _parse_pubmed_article(article, axis: str) -> Optional[RawItem]:
         confidence_note=note,
         source_name="PubMed",
         source_url=source_url,
+        audit=audit,
+        verdict=verdict,
     )
 
 
 def fetch_pubmed(cfg: dict, window_start: datetime, window_end: datetime) -> tuple[list[RawItem], int]:
     pubmed_cfg = cfg.get("pubmed", {})
     maturity_keywords = cfg.get("maturity_keywords", {})
+    threshold = get_path(cfg, "audit", "taille_echantillon_solide", default=DEFAULT_SAMPLE_THRESHOLD)
     items: list[RawItem] = []
     common_params = {
         "tool": "veille-dt1",
@@ -611,7 +877,7 @@ def fetch_pubmed(cfg: dict, window_start: datetime, window_end: datetime) -> tup
         _pubmed_sleep(pubmed_cfg)
 
         for article in root.findall(".//PubmedArticle"):
-            item = _parse_pubmed_article(article, axis)
+            item = _parse_pubmed_article(article, axis, threshold)
             if item is None:
                 continue
             item.maturity = classify_maturity(
@@ -639,6 +905,7 @@ def fetch_clinicaltrials(cfg: dict, window_start: datetime, window_end: datetime
     base_url = ct_cfg.get("base_url", "https://clinicaltrials.gov/api/v2/studies")
     condition = ct_cfg.get("condition", "Type 1 Diabetes")
     max_results = ct_cfg.get("max_results", 50)
+    threshold = get_path(cfg, "audit", "taille_echantillon_solide", default=DEFAULT_SAMPLE_THRESHOLD)
 
     date_range = f"AREA[LastUpdatePostDate]RANGE[{window_start:%Y-%m-%d},{window_end:%Y-%m-%d}]"
     params = {
@@ -705,6 +972,7 @@ def fetch_clinicaltrials(cfg: dict, window_start: datetime, window_end: datetime
                     break
 
             confidence, note = classify_confidence("clinicaltrials", True, True, None, [])
+            audit, verdict = audit_clinicaltrials(study, threshold)
             axis = classify_axis(f"{title} {summary}", cfg.get("axis_keywords", {}))
 
             items.append(
@@ -721,6 +989,8 @@ def fetch_clinicaltrials(cfg: dict, window_start: datetime, window_end: datetime
                     confidence_note=note,
                     source_name=f"ClinicalTrials.gov, {nct_id}",
                     source_url=f"https://clinicaltrials.gov/study/{nct_id}",
+                    audit=audit,
+                    verdict=verdict,
                 )
             )
             fetched += 1
@@ -816,6 +1086,8 @@ def fetch_rss(cfg: dict, window_start: datetime, window_end: datetime) -> tuple[
                     confidence_note=note,
                     source_name=feed_cfg.get("name", domain),
                     source_url=link,
+                    audit=audit_rss(bool(doi_match or nct_match))[0],
+                    verdict=audit_rss(bool(doi_match or nct_match))[1],
                 )
             )
     if filtered_out:
@@ -1101,6 +1373,8 @@ def build_fiche_updates(
                     "risk_fr": risk_fr,
                     "source_name": item.source_name,
                     "source_url": item.source_url,
+                    "audit": item.audit,
+                    "verdict": item.verdict,
                 }
             )
 
@@ -1169,6 +1443,8 @@ def build_entry(raw: RawItem, date_format: str) -> Entry:
         confidence_note=raw.confidence_note,
         source_name=raw.source_name,
         source_url=raw.source_url,
+        audit=raw.audit,
+        verdict=raw.verdict,
     )
 
 
@@ -1185,8 +1461,12 @@ def format_entry_md(entry: Entry, date_format: str) -> str:
         f"- **Maturité** : {entry.maturity}",
         f"- **Résumé (FR)** : {entry.summary_fr}",
         f"- **Niveau de confiance** : {confidence_line}",
-        f"- **Source** : [{entry.source_name}]({entry.source_url})",
     ]
+    if entry.audit:
+        lines.append(f"- **Audit** : {entry.audit}")
+    if entry.verdict:
+        lines.append(f"- **Verdict** : {entry.verdict}")
+    lines.append(f"- **Source** : [{entry.source_name}]({entry.source_url})")
     return "\n".join(lines)
 
 
@@ -1304,8 +1584,10 @@ def _build_email_body(summary: dict) -> str:
         return "\n".join(lines)
 
     fiches = summary.get("fiches_updated", [])
-    entries = summary.get("new_entries", [])
+    entries = sorted(summary.get("new_entries", []), key=lambda e: verdict_rank(e.get("verdict", "")))
     separator = "-" * 60
+    lines.append(DISCLAIMER)
+    lines.append("")
 
     def _item_lines(item: dict, title_key: str = "title_fr") -> list[str]:
         out = [f"* [{item.get('date', '?')}] [{item.get('country', 'non précisé dans la source')}] [{item.get('axis', '?')}] {item.get(title_key, '')}"]
@@ -1314,7 +1596,13 @@ def _build_email_body(summary: dict) -> str:
         if item.get("confidence_note"):
             confidence_line += f" ({item['confidence_note']})"
         out.append(f"  Confiance : {confidence_line}")
-        if item.get("benefit_fr"):
+        if item.get("verdict"):
+            out.append(f"  Verdict : {item['verdict']}")
+        if item.get("audit"):
+            out.append(f"  Audit : {item['audit']}")
+        # Sans phrase de risque, le bénéfice reprend tout le résumé : inutile
+        # de l'afficher deux fois.
+        if item.get("benefit_fr") and item.get("risk_fr"):
             out.append(f"  Bénéfice : {item['benefit_fr']}")
         if item.get("risk_fr"):
             out.append(f"  Risque : {item['risk_fr']}")
@@ -1337,7 +1625,7 @@ def _build_email_body(summary: dict) -> str:
                 for s in f.get("source_additions", []):
                     lines.append(f"  Nouvelle source : {s}")
             lines.append("")
-            for item in f.get("items", []):
+            for item in sorted(f.get("items", []), key=lambda i: verdict_rank(i.get("verdict", ""))):
                 lines.extend(_item_lines(item))
                 lines.append("")
         lines.append("")
@@ -1393,6 +1681,22 @@ def _axis_badge(axis: str) -> str:
     )
 
 
+_VERDICT_COLORS = {
+    0: ("#e6f4ea", "#1e7e34"),
+    1: ("#fff4e5", "#b25e00"),
+    2: ("#e3f2fd", "#1565c0"),
+    3: ("#fdecea", "#c62828"),
+}
+
+
+def _verdict_badge(verdict: str) -> str:
+    bg, fg = _VERDICT_COLORS.get(verdict_rank(verdict), ("#eceff1", "#455a64"))
+    return (
+        f'<span style="display:inline-block;padding:2px 8px;border-radius:10px;'
+        f'background:{bg};color:{fg};font-size:12px;"><b>Verdict</b> : {html.escape(verdict)}</span>'
+    )
+
+
 def _item_card_html(item: dict, title_key: str) -> str:
     """Rendu HTML d'un item (nouvelle entrée, ou item source d'une fiche mise
     à jour) — même gabarit dans les deux cas : titre, date/pays/axe,
@@ -1415,7 +1719,13 @@ def _item_card_html(item: dict, title_key: str) -> str:
         f' &nbsp;|&nbsp; Maturité : <b>{esc(item.get("maturity", "?"))}</b>'
         f' &nbsp;|&nbsp; Confiance : {_confidence_badge(item.get("confidence", "?"))}{confidence_note}</div>'
     )
-    if item.get("benefit_fr"):
+    if item.get("verdict"):
+        parts.append(f'<div style="font-size:13px;margin-bottom:2px;">{_verdict_badge(item["verdict"])}</div>')
+    if item.get("audit"):
+        parts.append(f'<div style="font-size:12px;color:#555;margin-bottom:4px;">🔎 <b>Audit</b> : {esc(item["audit"])}</div>')
+    # Sans phrase de risque, le bénéfice reprend tout le résumé : inutile de
+    # l'afficher deux fois.
+    if item.get("benefit_fr") and item.get("risk_fr"):
         parts.append(f'<div style="font-size:13px;color:#1e7e34;margin-bottom:2px;">✅ <b>Bénéfice</b> : {esc(item["benefit_fr"])}</div>')
     if item.get("risk_fr"):
         parts.append(f'<div style="font-size:13px;color:#c62828;margin-bottom:2px;">⚠️ <b>Risque</b> : {esc(item["risk_fr"])}</div>')
@@ -1461,7 +1771,11 @@ def _build_email_body_html(summary: dict) -> str:
         return "\n".join(parts)
 
     fiches = summary.get("fiches_updated", [])
-    entries = summary.get("new_entries", [])
+    entries = sorted(summary.get("new_entries", []), key=lambda e: verdict_rank(e.get("verdict", "")))
+    parts.append(
+        '<div style="background:#eef4fb;border-left:4px solid #1a5276;padding:8px 12px;'
+        f'margin-bottom:12px;font-size:13px;">ℹ️ {esc(DISCLAIMER)}</div>'
+    )
 
     def section_header(text: str, color: str) -> str:
         return (
@@ -1492,7 +1806,7 @@ def _build_email_body_html(summary: dict) -> str:
                     changes.append(f'🔗 <b>Nouvelle source</b> : {esc(s)}')
                 if changes:
                     parts.append(f'<div style="font-size:12px;color:#555;margin:0 0 8px 0;">{"<br>".join(changes)}</div>')
-            for item in f.get("items", []):
+            for item in sorted(f.get("items", []), key=lambda i: verdict_rank(i.get("verdict", ""))):
                 parts.append(_item_card_html(item, title_key="title_fr"))
 
     if entries:
@@ -1719,6 +2033,8 @@ def _run(args: argparse.Namespace, cfg: dict, summary: dict) -> int:
             "confidence_note": e.confidence_note,
             "source_name": e.source_name,
             "source_url": e.source_url,
+            "audit": e.audit,
+            "verdict": e.verdict,
             "benefit_fr": benefit_fr,
             "risk_fr": risk_fr,
         }
