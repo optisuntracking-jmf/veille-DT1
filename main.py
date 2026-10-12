@@ -1600,12 +1600,9 @@ def _build_email_body(summary: dict) -> str:
             out.append(f"  Verdict : {item['verdict']}")
         if item.get("audit"):
             out.append(f"  Audit : {item['audit']}")
-        # Sans phrase de risque, le bénéfice reprend tout le résumé : inutile
-        # de l'afficher deux fois.
-        if item.get("benefit_fr") and item.get("risk_fr"):
-            out.append(f"  Bénéfice : {item['benefit_fr']}")
-        if item.get("risk_fr"):
-            out.append(f"  Risque : {item['risk_fr']}")
+        # Pas de lignes Bénéfice/Risque : ce n'est qu'un redécoupage du
+        # résumé par mots-clés (souvent erroné, ex. « prévenir
+        # l'hypoglycémie » classé en risque), qui répétait le résumé.
         out.append(f"  Résumé : {item.get('summary_fr') or item.get('summary', 'non précisé dans la source')}")
         out.append(f"  Source : {item.get('source_name', '?')} — {item.get('source_url', '')}")
         return out
@@ -1700,7 +1697,7 @@ def _verdict_badge(verdict: str) -> str:
 def _item_card_html(item: dict, title_key: str) -> str:
     """Rendu HTML d'un item (nouvelle entrée, ou item source d'une fiche mise
     à jour) — même gabarit dans les deux cas : titre, date/pays/axe,
-    type|maturité|confiance, bénéfice, risque, résumé, source."""
+    type|maturité|confiance, verdict, audit, résumé, source."""
     esc = html.escape
     confidence_note = (
         f' <span style="color:#777;font-size:12px;">({esc(item["confidence_note"])})</span>'
@@ -1723,12 +1720,9 @@ def _item_card_html(item: dict, title_key: str) -> str:
         parts.append(f'<div style="font-size:13px;margin-bottom:2px;">{_verdict_badge(item["verdict"])}</div>')
     if item.get("audit"):
         parts.append(f'<div style="font-size:12px;color:#555;margin-bottom:4px;">🔎 <b>Audit</b> : {esc(item["audit"])}</div>')
-    # Sans phrase de risque, le bénéfice reprend tout le résumé : inutile de
-    # l'afficher deux fois.
-    if item.get("benefit_fr") and item.get("risk_fr"):
-        parts.append(f'<div style="font-size:13px;color:#1e7e34;margin-bottom:2px;">✅ <b>Bénéfice</b> : {esc(item["benefit_fr"])}</div>')
-    if item.get("risk_fr"):
-        parts.append(f'<div style="font-size:13px;color:#c62828;margin-bottom:2px;">⚠️ <b>Risque</b> : {esc(item["risk_fr"])}</div>')
+    # Pas de lignes Bénéfice/Risque : ce n'est qu'un redécoupage du résumé
+    # par mots-clés (souvent erroné, ex. « prévenir l'hypoglycémie » classé
+    # en risque), qui répétait le résumé.
     summary_text = item.get("summary_fr") or item.get("summary", "non précisé dans la source")
     parts.append(f'<div style="font-size:13px;margin-bottom:4px;">{esc(summary_text)}</div>')
     source_url = item.get("source_url", "")
